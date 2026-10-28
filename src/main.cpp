@@ -7,26 +7,29 @@
 using namespace geode::prelude;
 
 // How it works:
-//  1. pushButton / releaseButton are intercepted and put in a queue instead of reaching the game.
-//  2. Every physics tick (processCommands), the oldest queued input is tested:
+//  1. queueButton (where touches enter the game) is intercepted and the input is kept in our own
+//     queue instead of reaching the game.
+//  2. At the start of every physics tick (processCommands), the oldest queued input is tested:
 //     save a checkpoint, apply the input, step the game a few ticks, and see if the player dies.
 //     Then the checkpoint is loaded again, so the test leaves no trace.
-//  3. If the test survives, the input is sent to the game for real. If not, it waits one more tick.
-//  4. After the max delay it is sent anyway (or dropped, if that setting is on).
+//  3. If the test survives, the input is applied for real (handleButton). If not, it waits one
+//     more tick and is tested again.
+//  4. After the max delay it is applied anyway (or dropped, if that setting is on).
 // During a test, PlayLayer::destroyPlayer only records the death and does not kill the player.
 
 namespace {
 
 struct Pending {
-    bool down;
     int button;
-    bool isP1;
+    bool push;      // true = press, false = release
+    bool isPlayer2;
+    double timestamp;
     int waited;
 };
 
 std::deque<Pending> g_queue;
 bool g_probing = false;   // a test is running
-bool g_injecting = false; // we are sending an input to the game ourselves
+bool g_injecting = false; // we are applying an input ourselves
 bool g_probeDied = false;
 
 bool on(char const* key) {
@@ -47,8 +50,8 @@ bool active(GJBaseGameLayer* layer) {
 
 void inject(PlayLayer* pl, Pending const& ev) {
     g_injecting = true;
-    if (ev.down) pl->pushButton(ev.button, ev.isP1);
-    else pl->releaseButton(ev.button, ev.isP1);
+    // handleButton takes isPlayer1, queueButton gave us isPlayer2
+    pl->handleButton(ev.push, ev.button, !ev.isPlayer2);
     g_injecting = false;
 }
 
@@ -68,7 +71,7 @@ bool probeSafe(PlayLayer* pl, Pending const& ev, float dt) {
 
     int horizon = num("horizon-ticks");
     for (int i = 0; i < horizon && !g_probeDied; i++) {
-        pl->processCommands(dt);
+        pl->processCommands(dt, false, false);
     }
     bool safe = !g_probeDied;
 
@@ -97,8 +100,8 @@ void pump(PlayLayer* pl, float dt) {
 
     inject(pl, ev);
     if (on("debug-log")) {
-        log::info("{} button {} (p1={}) released after {} ticks{}",
-            ev.down ? "press" : "release", ev.button, ev.isP1, ev.waited,
+        log::info("{} button {} (p2={}) applied after {} ticks{}",
+            ev.push ? "press" : "release", ev.button, ev.isPlayer2, ev.waited,
             timedOut ? " (timed out)" : "");
     }
 }
@@ -106,31 +109,23 @@ void pump(PlayLayer* pl, float dt) {
 } // namespace
 
 class $modify(TickBufferBase, GJBaseGameLayer) {
-    void pushButton(int button, bool isP1) {
+    void queueButton(int button, bool push, bool isPlayer2, double timestamp) {
         if (!g_injecting && !g_probing && active(this)) {
-            g_queue.push_back({true, button, isP1, 0});
-            return;
-        }
-        GJBaseGameLayer::pushButton(button, isP1);
-    }
-
-    void releaseButton(int button, bool isP1) {
-        if (!g_injecting && !g_probing && active(this)) {
-            // Keep order: if presses are waiting, the release must wait behind them.
-            if (on("buffer-releases") || !g_queue.empty()) {
-                g_queue.push_back({false, button, isP1, 0});
+            // Keep order: if inputs are waiting, a release must wait behind them.
+            if (push || on("buffer-releases") || !g_queue.empty()) {
+                g_queue.push_back({button, push, isPlayer2, timestamp, 0});
                 return;
             }
         }
-        GJBaseGameLayer::releaseButton(button, isP1);
+        GJBaseGameLayer::queueButton(button, push, isPlayer2, timestamp);
     }
 
-    void processCommands(float dt) {
+    void processCommands(float dt, bool isHalfTick, bool isLastTick) {
         if (!g_probing && !g_queue.empty()) {
             if (active(this)) pump(typeinfo_cast<PlayLayer*>(this), dt);
             else g_queue.clear();
         }
-        GJBaseGameLayer::processCommands(dt);
+        GJBaseGameLayer::processCommands(dt, isHalfTick, isLastTick);
     }
 };
 
