@@ -1,0 +1,59 @@
+{
+	"geode": "5.11.2",
+	"gd": {
+		"ios": "2.2081"
+	},
+	"version": "v1.0.0",
+	"id": "lyophi.tickbuffer",
+	"name": "Tick Buffer",
+	"developer": "lyophi",
+	"description": "Holds early clicks and releases back until the first tick where you survive, then lets them through.",
+	"tags": ["gameplay", "enhancement"],
+	"settings": {
+		"enabled": {
+			"type": "bool",
+			"name": "Enable Tick Buffer",
+			"default": true
+		},
+		"max-delay-ticks": {
+			"type": "int",
+			"name": "Max Delay (ticks)",
+			"description": "How long an input can be held back. 240 ticks = 1 second, so 4 ticks is about 1 frame at 60 FPS. 8 to 16 is the usual range.",
+			"default": 12,
+			"min": 1,
+			"max": 32,
+			"control": {
+				"slider": true
+			}
+		},
+		"horizon-ticks": {
+			"type": "int",
+			"name": "Safety Lookahead (ticks)",
+			"description": "How many ticks ahead each input is tested for survival. Higher is safer but costs more per test.",
+			"default": 10,
+			"min": 2,
+			"max": 32,
+			"control": {
+				"slider": true
+			}
+		},
+		"buffer-releases": {
+			"type": "bool",
+			"name": "Buffer Releases",
+			"description": "Also hold back button releases. Needed for wave and other hold-based modes.",
+			"default": true
+		},
+		"drop-on-timeout": {
+			"type": "bool",
+			"name": "Drop Input If Never Safe",
+			"description": "If no safe tick is found within the max delay, throw the input away instead of letting it through.",
+			"default": false
+		},
+		"debug-log": {
+			"type": "bool",
+			"name": "Debug Log",
+			"description": "Write a line to the Geode log each time an input is released, with how many ticks it waited.",
+			"default": false
+		}
+	}
+}
