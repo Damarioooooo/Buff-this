@@ -3,7 +3,7 @@
 	"gd": {
 		"ios": "2.2081"
 	},
-	"version": "v1.0.1",
+	"version": "v1.0.2",
 	"id": "lyophi.tickbuffer",
 	"name": "Tick Buffer",
 	"developer": "lyophi",
@@ -19,9 +19,9 @@
 			"type": "int",
 			"name": "Max Delay (ticks)",
 			"description": "How long an input can be held back. 240 ticks = 1 second, so 4 ticks is about 1 frame at 60 FPS. 8 to 16 is the usual range.",
-			"default": 12,
+			"default": 24,
 			"min": 1,
-			"max": 32,
+			"max": 240,
 			"control": {
 				"slider": true
 			}
@@ -29,10 +29,10 @@
 		"horizon-ticks": {
 			"type": "int",
 			"name": "Safety Lookahead (ticks)",
-			"description": "How many ticks ahead each input is tested for survival. Higher is safer but costs more per test.",
-			"default": 10,
+			"description": "How many ticks ahead each input is tested for survival. For very early clicks this must cover the whole jump, so raise it together with Max Delay. Higher costs more per test and can wrongly reject a click that needs a second click soon after.",
+			"default": 16,
 			"min": 2,
-			"max": 32,
+			"max": 120,
 			"control": {
 				"slider": true
 			}
