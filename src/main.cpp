@@ -1,6 +1,7 @@
 #include <Geode/Geode.hpp>
 #include <Geode/modify/GJBaseGameLayer.hpp>
 #include <Geode/modify/PlayLayer.hpp>
+#include <Geode/modify/FMODAudioEngine.hpp>
 
 #include <deque>
 
@@ -126,6 +127,56 @@ class $modify(TickBufferBase, GJBaseGameLayer) {
             else g_queue.clear();
         }
         GJBaseGameLayer::processCommands(dt, isHalfTick, isLastTick);
+    }
+
+    // Sound effect and song triggers must not fire during a test.
+    void processQueuedAudioTriggers() {
+        if (g_probing) return;
+        GJBaseGameLayer::processQueuedAudioTriggers();
+    }
+
+    void processSFXObjects() {
+        if (g_probing) return;
+        GJBaseGameLayer::processSFXObjects();
+    }
+};
+
+// A checkpoint stores the audio state, so every test would seek the song and replay sounds.
+// While a test runs, all of that is switched off.
+class $modify(TickBufferAudio, FMODAudioEngine) {
+    void loadAudioState(FMODAudioState& state) {
+        if (g_probing) return;
+        FMODAudioEngine::loadAudioState(state);
+    }
+
+    void saveAudioState(FMODAudioState& state) {
+        if (g_probing) return;
+        FMODAudioEngine::saveAudioState(state);
+    }
+
+    void setMusicTimeMS(unsigned int time, bool dontWait, int musicID) {
+        if (g_probing) return;
+        FMODAudioEngine::setMusicTimeMS(time, dontWait, musicID);
+    }
+
+    void startMusic(int start, int end, int fadeIn, int fadeOut, bool loop, int musicID, bool noResume, bool dontReset) {
+        if (g_probing) return;
+        FMODAudioEngine::startMusic(start, end, fadeIn, fadeOut, loop, musicID, noResume, dontReset);
+    }
+
+    int playEffect(gd::string path) {
+        if (g_probing) return 0;
+        return FMODAudioEngine::playEffect(path);
+    }
+
+    int playEffect(gd::string path, float speed, float unknown, float volume) {
+        if (g_probing) return 0;
+        return FMODAudioEngine::playEffect(path, speed, unknown, volume);
+    }
+
+    int playEffectAdvanced(gd::string path, float speed, float unknown, float volume, float pitch, bool fastFourierTransform, bool reverb, int startMillis, int endMillis, int fadeIn, int fadeOut, bool loopEnabled, int effectID, bool overrideFlag, bool noPreload, int channelID, int uniqueID, float minInterval, int sfxGroup) {
+        if (g_probing) return 0;
+        return FMODAudioEngine::playEffectAdvanced(path, speed, unknown, volume, pitch, fastFourierTransform, reverb, startMillis, endMillis, fadeIn, fadeOut, loopEnabled, effectID, overrideFlag, noPreload, channelID, uniqueID, minInterval, sfxGroup);
     }
 };
 
